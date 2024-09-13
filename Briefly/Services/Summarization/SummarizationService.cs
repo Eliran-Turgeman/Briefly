@@ -7,10 +7,12 @@ namespace Briefly.Services.Summarization;
 public class SummarizationService : BackgroundService
 {
     private readonly IServiceScopeFactory _scopeFactory;
+    private readonly ILogger<SummarizationService> _logger;
 
-    public SummarizationService(IServiceScopeFactory scopeFactory)
+    public SummarizationService(IServiceScopeFactory scopeFactory, ILogger<SummarizationService> logger)
     {
         _scopeFactory = scopeFactory;
+        _logger = logger;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -27,6 +29,8 @@ public class SummarizationService : BackgroundService
                     .Where(bp => !bp.IsPublished)
                     .ToListAsync(stoppingToken);
 
+                _logger.LogInformation($"Found {blogPosts.Count} blog posts to summarize.");
+
                 foreach (var blogPost in blogPosts)
                 {
                     try
@@ -41,7 +45,7 @@ public class SummarizationService : BackgroundService
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"Error summarizing blog post {blogPost.Id}: {ex.Message}");
+                        _logger.LogCritical($"Error summarizing blog post {blogPost.Id}: {ex.Message}");
                     }
                 }
             }
@@ -57,6 +61,7 @@ public class SummarizationService : BackgroundService
 
         if (!article.IsReadable)
         {
+            _logger.LogWarning($"Failed to extract readable content from {url}. Falling back to HTTP request.");
             using var httpClient = new HttpClient();
             var response = await httpClient.GetAsync(url);
             return await response.Content.ReadAsStringAsync();

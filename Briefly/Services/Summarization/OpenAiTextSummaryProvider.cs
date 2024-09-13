@@ -6,17 +6,20 @@ namespace Briefly.Services.Summarization;
 public class OpenAiTextSummaryProvider : ITextSummaryProvider
 {
     private readonly OpenAIAPI _openAiApi;
+    private readonly ILogger<OpenAiTextSummaryProvider> _logger;
 
-    public OpenAiTextSummaryProvider(string apiKey)
+    public OpenAiTextSummaryProvider(string apiKey, ILogger<OpenAiTextSummaryProvider> logger)
     {
         if (string.IsNullOrWhiteSpace(apiKey))
             throw new ArgumentNullException(nameof(apiKey), "OpenAI API key must be provided.");
 
         _openAiApi = new OpenAIAPI(apiKey);
+        _logger = logger;
     }
 
     public async Task<string> GenerateSummaryAsync(string content)
     {
+        _logger.LogInformation("Generating summary for content.");
         if (string.IsNullOrWhiteSpace(content))
             throw new ArgumentException("Content to summarize must be provided.", nameof(content));
 

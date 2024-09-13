@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Briefly.Data;
+using Briefly.Services.Summarization;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContextFactory<BrieflyContext>(options =>
@@ -14,6 +15,17 @@ builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+
+builder.Services.AddSingleton<ITextSummaryProvider>(provider =>
+{
+    var configuration = provider.GetRequiredService<IConfiguration>();
+    var apiKey = configuration["OpenAI:ApiKey"];
+
+    return new OpenAiTextSummaryProvider(apiKey!);
+});
+
+builder.Services.AddHostedService<SummarizationService>();
+
 
 var app = builder.Build();
 

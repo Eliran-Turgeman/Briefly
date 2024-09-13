@@ -1,4 +1,4 @@
-﻿@page "/blogposts"
+﻿@page "/blogposts/requiredAttention"
 @using Microsoft.EntityFrameworkCore
 @using Microsoft.AspNetCore.Components.QuickGrid
 @using Briefly
@@ -7,13 +7,13 @@
 @inject IDbContextFactory<Briefly.Data.BrieflyContext> DbFactory
 @rendermode InteractiveServer
 
-<PageTitle>Index</PageTitle>
+<PageTitle>Required Attention Posts Index</PageTitle>
 
-<h1>Index</h1>
+<h1>Required Attention Posts Index</h1>
 
 <p>
     <a href="blogposts/create">Create New</a><br />
-    <a href="/blogposts/requiredAttention">Posts requiring attention</a>
+    <a href="/blogposts">All blog posts</a>
 </p>
 
 <QuickGrid Class="table" Items="FilteredBlogPost" Pagination="paginationState">
@@ -25,7 +25,7 @@
             </div>
         </ColumnOptions>
     </PropertyColumn>
-    <PropertyColumn Property="blogpost => blogpost.IsApprovedSummary" Sortable="true"  /> 
+    <PropertyColumn Property="blogpost => blogpost.IsApprovedSummary" Sortable="true" />
     <PropertyColumn Property="blogpost => blogpost.IsPublished" Sortable="true" />
 
     <TemplateColumn Context="blogpost">
@@ -41,7 +41,11 @@
     private BrieflyContext context = default!;
     PaginationState paginationState = new() { ItemsPerPage = 5 };
     string summaryFilter = string.Empty;
-    IQueryable<BlogPost> FilteredBlogPost => context.BlogPost.Where(blogpost => blogpost.Summary!.Contains(summaryFilter));
+    IQueryable<BlogPost> FilteredBlogPost => context.BlogPost
+    .Where(blogpost =>
+        !blogpost.IsApprovedSummary &&
+        !blogpost.IsPublished &&
+        (string.IsNullOrEmpty(summaryFilter) || blogpost.Summary!.Contains(summaryFilter)));
 
     protected override void OnInitialized()
     {
@@ -52,7 +56,7 @@
 
     private string TruncateSummary(string summary)
     {
-        if(string.IsNullOrEmpty(summary))
+        if (string.IsNullOrEmpty(summary))
         {
             return string.Empty;
         }

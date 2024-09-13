@@ -1,0 +1,64 @@
+﻿@page "/blogposts"
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Components.QuickGrid
+@using Briefly
+@using Briefly.Data
+@implements IAsyncDisposable
+@inject IDbContextFactory<Briefly.Data.BrieflyContext> DbFactory
+@rendermode InteractiveServer
+
+<PageTitle>Index</PageTitle>
+
+<h1>Index</h1>
+
+<p>
+    <a href="blogposts/create">Create New</a>
+</p>
+
+<QuickGrid Class="table" Items="FilteredBlogPost" Pagination="paginationState">
+    <PropertyColumn Property="blogpost => blogpost.Url" />
+    <PropertyColumn Property="blogpost => TruncateSummary(blogpost.Summary!)" Title="Summary">
+        <ColumnOptions>
+            <div>
+                <input type="search" autofocus @bind="summaryFilter" @bind:event="oninput" />
+            </div>
+        </ColumnOptions>
+    </PropertyColumn>
+    <PropertyColumn Property="blogpost => blogpost.IsApprovedSummary" Sortable="true"  /> 
+    <PropertyColumn Property="blogpost => blogpost.IsPublished" Sortable="true" />
+
+    <TemplateColumn Context="blogpost">
+        <a href="@($"blogposts/edit?id={blogpost.Id}")">Edit</a> |
+        <a href="@($"blogposts/details?id={blogpost.Id}")">Details</a> |
+        <a href="@($"blogposts/delete?id={blogpost.Id}")">Delete</a>
+    </TemplateColumn>
+</QuickGrid>
+
+<Paginator State="paginationState" />
+
+@code {
+    private BrieflyContext context = default!;
+    PaginationState paginationState = new() { ItemsPerPage = 5 };
+    string summaryFilter = string.Empty;
+    IQueryable<BlogPost> FilteredBlogPost => context.BlogPost.Where(blogpost => blogpost.Summary!.Contains(summaryFilter));
+
+    protected override void OnInitialized()
+    {
+        context = DbFactory.CreateDbContext();
+    }
+
+    public async ValueTask DisposeAsync() => await context.DisposeAsync();
+
+    private string TruncateSummary(string summary)
+    {
+        if(string.IsNullOrEmpty(summary))
+        {
+            return string.Empty;
+        }
+        if (summary.Length > 100)
+        {
+            return summary.Substring(0, 100) + "...";
+        }
+        return summary;
+    }
+}

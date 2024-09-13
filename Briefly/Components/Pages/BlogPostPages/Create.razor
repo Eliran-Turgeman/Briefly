@@ -1,0 +1,59 @@
+﻿@page "/blogposts/create"
+@using Microsoft.EntityFrameworkCore
+@using Briefly
+@inject IDbContextFactory<Briefly.Data.BrieflyContext> DbFactory
+@inject NavigationManager NavigationManager
+
+<PageTitle>Create</PageTitle>
+
+<h1>Create</h1>
+
+<h2>BlogPost</h2>
+<hr />
+<div class="row">
+    <div class="col-md-4">
+        <EditForm method="post" Model="BlogPost" OnValidSubmit="AddBlogPost" FormName="create" Enhance>
+            <DataAnnotationsValidator />
+            <ValidationSummary class="text-danger" />
+            <div class="mb-3">
+                <label for="url" class="form-label">Url:</label> 
+                <InputText id="url" @bind-Value="BlogPost.Url" class="form-control" /> 
+                <ValidationMessage For="() => BlogPost.Url" class="text-danger" /> 
+            </div>        
+            <div class="mb-3">
+                <label for="summary" class="form-label">Summary:</label> 
+                <InputText id="summary" @bind-Value="BlogPost.Summary" class="form-control" /> 
+                <ValidationMessage For="() => BlogPost.Summary" class="text-danger" /> 
+            </div>        
+            <div class="mb-3">
+                <label for="isapprovedsummary" class="form-label">IsApprovedSummary:</label> 
+                <InputCheckbox id="isapprovedsummary" @bind-Value="BlogPost.IsApprovedSummary" class="form-check-input" /> 
+                <ValidationMessage For="() => BlogPost.IsApprovedSummary" class="text-danger" /> 
+            </div>        
+            <div class="mb-3">
+                <label for="ispublished" class="form-label">IsPublished:</label> 
+                <InputCheckbox id="ispublished" @bind-Value="BlogPost.IsPublished" class="form-check-input" /> 
+                <ValidationMessage For="() => BlogPost.IsPublished" class="text-danger" /> 
+            </div>        
+            <button type="submit" class="btn btn-primary">Create</button>
+        </EditForm>
+    </div>
+</div>
+
+<div>
+    <a href="/blogposts">Back to List</a>
+</div>
+
+@code {
+    [SupplyParameterFromForm]
+    private BlogPost BlogPost { get; set; } = new();
+
+    // To protect from overposting attacks, see https://learn.microsoft.com/aspnet/core/blazor/forms/#mitigate-overposting-attacks.
+    private async Task AddBlogPost()
+    {
+        using var context = DbFactory.CreateDbContext();
+        context.BlogPost.Add(BlogPost);
+        await context.SaveChangesAsync();
+        NavigationManager.NavigateTo("/blogposts");
+    }
+}

@@ -27,8 +27,12 @@ public class OpenAiTextSummaryProvider : ITextSummaryProvider
         You  will help me generate a summary for a blog post.
         The summary should adhere to the following requirements:
         - summary should contain 2-3 sentences only.
-        - summary should be in a simple language
+        - summary should be in a simple, consice language.
+        - tell a story about the content, make it human by saying that you just read something interesting.
+        - mention why you think this is a valuable read.
         - summary can include some "wrapping" around the summary itself like "Interesting read, this post is about... " or "Just read about ... I think you will enjoy it" something like that - make it human.
+        - Be precise, don't mislead and don't be clickbaity.
+        - Don't say words that will give the impression you are an LLM - like "delve" for example.
 
         Your output should be the summary itself ONLY
 

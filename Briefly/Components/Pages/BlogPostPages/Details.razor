@@ -1,8 +1,11 @@
 ﻿@page "/blogposts/details"
 @using Microsoft.EntityFrameworkCore
 @using Briefly
+@using Briefly.Services.Summarization
 @inject IDbContextFactory<Briefly.Data.BrieflyContext> DbFactory
 @inject NavigationManager NavigationManager
+@inject ISummarizationService SummarizationService
+@rendermode InteractiveServer
 
 <PageTitle>Details</PageTitle>
 
@@ -15,7 +18,8 @@
     {
         <p><em>Loading...</em></p>
     }
-    else {
+    else
+    {
         <dl class="row">
             <dt class="col-sm-2">Url</dt>
             <dd class="col-sm-10">@blogpost.Url</dd>
@@ -28,13 +32,24 @@
         </dl>
         <div>
             <a href="@($"/blogposts/edit?id={blogpost.Id}")">Edit</a> |
-            <a href="@($"/blogposts")">Back to List</a>
+            <a href="@($"/blogposts")">Back to List</a> |
+            <button @onclick="SummarizePost" disabled="@isSummarizing">
+                @if (isSummarizing)
+                {
+                    <span>Summarizing...</span>
+                }
+                else
+                {
+                    <span>Summarize Post</span>
+                }
+            </button>
         </div>
     }
 </div>
 
 @code {
     private BlogPost? blogpost;
+    private bool isSummarizing = false; // Track if summarization is in progress
 
     [SupplyParameterFromQuery]
     private int Id { get; set; }
@@ -47,6 +62,30 @@
         if (blogpost is null)
         {
             NavigationManager.NavigateTo("notfound");
+        }
+    }
+
+    protected async Task SummarizePost()
+    {
+        if (isSummarizing) return; // Prevent multiple clicks
+
+        try
+        {
+            isSummarizing = true; // Set the loading state
+            await SummarizationService.SummarizeAsync(blogpost, new CancellationTokenSource().Token);
+
+            // Ensure the UI is updated after summarization
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            // Handle exceptions (e.g., logging)
+            Console.WriteLine($"Error occurred: {ex.Message}");
+        }
+        finally
+        {
+            isSummarizing = false; // Reset the loading state after completion
+            StateHasChanged();
         }
     }
 }

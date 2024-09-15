@@ -4,18 +4,32 @@ using Microsoft.Extensions.DependencyInjection;
 using Briefly.Data;
 using Briefly.Services.Summarization;
 using Briefly.Services.Publishing;
+using Prometheus;
+using Microsoft.AspNetCore.Mvc;
+using Briefly.Services.Summarization.ContentFetchers.Strategies;
+using Briefly.Services.Summarization.ContentFetchers;
+using TL;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContextFactory<BrieflyContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("BrieflyContext") ?? throw new InvalidOperationException("Connection string 'BrieflyContext' not found.")));
 
 builder.Services.AddQuickGridEntityFrameworkAdapter();
-
+builder.Services.AddControllers();
+builder.Services.AddControllersWithViews(options =>
+{
+    options.Filters.Add(new AutoValidateAntiforgeryTokenAttribute()); // Automatically validate anti-forgery tokens on all POST requests
+});
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
-    .AddInteractiveServerComponents();
+.AddInteractiveServerComponents();
+
+builder.Services.AddSingleton<IContentFetchStrategy, SmartReaderFetchStrategy>();
+builder.Services.AddSingleton<IContentFetchStrategy, HttpFetchStrategy>();
+builder.Services.AddSingleton<IContentFetcher, ContentFetcher>();
+builder.Services.AddSingleton<ISummarizationService, SummarizationService>();
 
 builder.Services.AddSingleton<ITextSummaryProvider>(provider =>
 {
@@ -38,7 +52,7 @@ builder.Services.AddSingleton<IPublisher>(provider =>
     return new TelegramPublisher(apiId!, apiHash!, phoneNumber!, channelId);
 });
 
-builder.Services.AddHostedService<SummarizationService>();
+builder.Services.AddHostedService<SummarizationBackgroundService>();
 builder.Services.AddHostedService<PublishingService>();
 
 
@@ -52,11 +66,24 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
     app.UseMigrationsEndPoint();
 }
+app.UseHttpMetrics(); // Collect HTTP metrics
+
+app.UseRouting();
+
+app.UseAuthentication();
+app.UseAntiforgery();
+app.UseAuthorization();
+
+
+app.UseEndpoints(endpoints =>
+{
+    endpoints.MapMetrics(); // Expose metrics at /metrics endpoint
+    endpoints.MapControllers();
+});
 
 app.UseHttpsRedirection();
 
 app.UseStaticFiles();
-app.UseAntiforgery();
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();

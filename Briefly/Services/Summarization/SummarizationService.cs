@@ -1,73 +1,60 @@
 ﻿using Briefly.Data;
-using Microsoft.EntityFrameworkCore;
-using SmartReader;
+using Briefly.Services.Summarization.ContentFetchers;
 
 namespace Briefly.Services.Summarization;
 
-public class SummarizationService : BackgroundService
+public class SummarizationService : ISummarizationService
 {
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<SummarizationService> _logger;
+    private readonly IContentFetcher _contentFetcher;
 
-    public SummarizationService(IServiceScopeFactory scopeFactory, ILogger<SummarizationService> logger)
+    public SummarizationService(IServiceScopeFactory scopeFactory,
+        ILogger<SummarizationService> logger,
+        IContentFetcher contentFetcher)
     {
         _scopeFactory = scopeFactory;
         _logger = logger;
+        _contentFetcher = contentFetcher;
     }
 
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    public async Task SummarizeAsync(BlogPost postToSummarize, CancellationToken stoppingToken)
     {
-        while (!stoppingToken.IsCancellationRequested)
+        _logger.LogInformation($"Summarizing blog post {postToSummarize.Id}");
+        using var scope = _scopeFactory.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<BrieflyContext>();
+        var llmProvider = scope.ServiceProvider.GetRequiredService<ITextSummaryProvider>();
+
+        try
         {
-            using (var scope = _scopeFactory.CreateScope())
-            {
-                var dbContext = scope.ServiceProvider.GetRequiredService<BrieflyContext>();
-                var llmProvider = scope.ServiceProvider.GetRequiredService<ITextSummaryProvider>();
+            var content = await _contentFetcher.FetchContentAsync(postToSummarize.Url!);
+            var summary = await llmProvider.GenerateSummaryAsync(content);
 
-                var blogPosts = await dbContext.BlogPost
-                    .Where(bp => string.IsNullOrEmpty(bp.Summary))
-                    .Where(bp => !bp.IsPublished)
-                    .ToListAsync(stoppingToken);
+            postToSummarize.Summary = summary;
 
-                _logger.LogInformation($"Found {blogPosts.Count} blog posts to summarize.");
-
-                foreach (var blogPost in blogPosts)
-                {
-                    try
-                    {
-                        var content = await FetchContentAsync(blogPost.Url!);
-                        var summary = await llmProvider.GenerateSummaryAsync(content);
-
-                        blogPost.Summary = summary;
-
-                        dbContext.Update(blogPost);
-                        await dbContext.SaveChangesAsync(stoppingToken);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogCritical($"Error summarizing blog post {blogPost.Id}: {ex.Message}");
-                    }
-                }
-            }
-
-            // Wait before checking again
-            await Task.Delay(TimeSpan.FromMinutes(5), stoppingToken);
+            dbContext.Update(postToSummarize);
+            await dbContext.SaveChangesAsync(stoppingToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogCritical($"Error summarizing blog post {postToSummarize.Id}: {ex.Message}");
         }
     }
 
-    private async Task<string> FetchContentAsync(string url)
+    public async Task SummarizeAsync(int blogPostId, CancellationToken stoppingToken)
     {
-        var article = new Reader(url).GetArticle();
+        using var scope = _scopeFactory.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<BrieflyContext>();
+        var llmProvider = scope.ServiceProvider.GetRequiredService<ITextSummaryProvider>();
 
-        if (!article.IsReadable)
+        var blogPost = await dbContext.BlogPost.FindAsync(blogPostId);
+
+        if (blogPost == null)
         {
-            _logger.LogWarning($"Failed to extract readable content from {url}. Falling back to HTTP request.");
-            using var httpClient = new HttpClient();
-            var response = await httpClient.GetAsync(url);
-            return await response.Content.ReadAsStringAsync();
+            _logger.LogWarning($"Blog post with ID {blogPostId} not found.");
+            return;
         }
 
-        return article.TextContent;
+        await SummarizeAsync(blogPost, stoppingToken);
     }
 }
-

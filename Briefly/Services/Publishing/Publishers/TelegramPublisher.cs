@@ -1,7 +1,7 @@
 ﻿using TL;
 using WTelegram;
 
-namespace Briefly.Services.Publishing;
+namespace Briefly.Services.Publishing.Publishers;
 
 public class TelegramPublisher : IPublisher, IDisposable
 {
@@ -11,22 +11,24 @@ public class TelegramPublisher : IPublisher, IDisposable
     private readonly string _apiHash;
     private readonly string _phoneNumber;
     private InputPeerChannel? _channelPeer = null;
+    private readonly ILogger<TelegramPublisher> _logger;
 
     public string MediaIdentifier => _channelId.ToString();
 
-    public TelegramPublisher(string apiId, string apiHash, string phoneNumber, long channelId)
+    public TelegramPublisher(string apiId, string apiHash, string phoneNumber, long channelId, ILogger<TelegramPublisher> logger)
     {
         _apiId = apiId;
         _apiHash = apiHash;
         _phoneNumber = phoneNumber;
-        _client = new Client(Config);
+        _logger = logger;
         _channelId = channelId;
 
-        InitializeAsync().GetAwaiter().GetResult();
+        _client = new Client(Config);
     }
 
     private async Task InitializeAsync()
     {
+        _logger.LogInformation("Initializing Telegram publisher");
         await _client.LoginUserIfNeeded();
 
         var dialogs = await _client.Messages_GetAllDialogs();
@@ -59,8 +61,10 @@ public class TelegramPublisher : IPublisher, IDisposable
         }
     }
 
-    public async Task SendMessageAsync(string message)
+    public async Task PublishMessageAsync(string message)
     {
+        _logger.LogInformation($"Publishing message to Telegram channel {_channelId}");
+        await InitializeAsync();
         await _client.SendMessageAsync(_channelPeer, message);
     }
 

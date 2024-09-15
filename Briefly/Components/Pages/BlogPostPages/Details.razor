@@ -2,9 +2,12 @@
 @using Microsoft.EntityFrameworkCore
 @using Briefly
 @using Briefly.Services.Summarization
+@using Briefly.Services.Publishing
 @inject IDbContextFactory<Briefly.Data.BrieflyContext> DbFactory
 @inject NavigationManager NavigationManager
 @inject ISummarizationService SummarizationService
+@inject IPublishingService PublishingService
+
 @rendermode InteractiveServer
 
 <PageTitle>Details</PageTitle>
@@ -33,8 +36,8 @@
         <div>
             <a href="@($"/blogposts/edit?id={blogpost.Id}")">Edit</a> |
             <a href="@($"/blogposts")">Back to List</a> |
-            <button @onclick="SummarizePost" disabled="@isSummarizing">
-                @if (isSummarizing)
+            <button @onclick="SummarizePost" disabled="@summarizingInProgress">
+                @if (summarizingInProgress)
                 {
                     <span>Summarizing...</span>
                 }
@@ -43,13 +46,24 @@
                     <span>Summarize Post</span>
                 }
             </button>
+            <button @onclick="PublishPost" disabled="@publishingInProgress">
+                @if (publishingInProgress)
+                {
+                    <span>Publishing...</span>
+                }
+                else
+                {
+                    <span>Publish Post</span>
+                }
+            </button>
         </div>
     }
 </div>
 
 @code {
     private BlogPost? blogpost;
-    private bool isSummarizing = false; // Track if summarization is in progress
+    private bool summarizingInProgress = false;
+    private bool publishingInProgress = false;
 
     [SupplyParameterFromQuery]
     private int Id { get; set; }
@@ -67,24 +81,52 @@
 
     protected async Task SummarizePost()
     {
-        if (isSummarizing) return; // Prevent multiple clicks
+        if (summarizingInProgress) return; // Prevent multiple clicks
 
         try
         {
-            isSummarizing = true; // Set the loading state
-            await SummarizationService.SummarizeAsync(blogpost, new CancellationTokenSource().Token);
+            summarizingInProgress = true;
+            StateHasChanged();
 
-            // Ensure the UI is updated after summarization
+            await SummarizationService.SummarizeAsync(blogpost!, new CancellationTokenSource().Token);
             StateHasChanged();
         }
         catch (Exception ex)
         {
-            // Handle exceptions (e.g., logging)
             Console.WriteLine($"Error occurred: {ex.Message}");
         }
         finally
         {
-            isSummarizing = false; // Reset the loading state after completion
+            summarizingInProgress = false;
+            StateHasChanged();
+        }
+    }
+
+    protected async Task PublishPost()
+    {
+        if (publishingInProgress) return; // Prevent multiple clicks
+
+        try
+        {
+            publishingInProgress = true;
+            StateHasChanged();
+
+            await PublishingService.PublishAsync(blogpost!, new CancellationTokenSource().Token);
+
+            blogpost!.IsPublished = true;
+
+            using var context = DbFactory.CreateDbContext();
+            context.BlogPost.Update(blogpost);
+            await context.SaveChangesAsync();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error occurred: {ex.Message}");
+        }
+        finally
+        {
+            publishingInProgress = false;
             StateHasChanged();
         }
     }

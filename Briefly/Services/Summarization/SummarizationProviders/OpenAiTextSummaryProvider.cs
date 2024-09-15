@@ -1,7 +1,7 @@
 ﻿using OpenAI_API;
 using OpenAI_API.Chat;
 
-namespace Briefly.Services.Summarization;
+namespace Briefly.Services.Summarization.SummarizationProviders;
 
 public class OpenAiTextSummaryProvider : ITextSummaryProvider
 {

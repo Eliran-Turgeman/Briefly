@@ -8,7 +8,8 @@ using Prometheus;
 using Microsoft.AspNetCore.Mvc;
 using Briefly.Services.Summarization.ContentFetchers.Strategies;
 using Briefly.Services.Summarization.ContentFetchers;
-using TL;
+using Briefly.Services.Summarization.SummarizationProviders;
+using Briefly.Services.Publishing.Publishers;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContextFactory<BrieflyContext>(options =>
@@ -30,6 +31,7 @@ builder.Services.AddSingleton<IContentFetchStrategy, SmartReaderFetchStrategy>()
 builder.Services.AddSingleton<IContentFetchStrategy, HttpFetchStrategy>();
 builder.Services.AddSingleton<IContentFetcher, ContentFetcher>();
 builder.Services.AddSingleton<ISummarizationService, SummarizationService>();
+builder.Services.AddSingleton<IPublishingService, PublishingService>();
 
 builder.Services.AddSingleton<ITextSummaryProvider>(provider =>
 {
@@ -48,12 +50,13 @@ builder.Services.AddSingleton<IPublisher>(provider =>
     var apiHash = configuration["Telegram:ApiHash"];
     var phoneNumber = configuration["Telegram:PhoneNumber"];
     var channelId = long.Parse(configuration["Telegram:ChannelId"]!);
+    var logger = provider.GetRequiredService<ILogger<TelegramPublisher>>();
 
-    return new TelegramPublisher(apiId!, apiHash!, phoneNumber!, channelId);
+    return new TelegramPublisher(apiId!, apiHash!, phoneNumber!, channelId, logger);
 });
 
 builder.Services.AddHostedService<SummarizationBackgroundService>();
-builder.Services.AddHostedService<PublishingService>();
+builder.Services.AddHostedService<PublishingBackgroundService>();
 
 
 var app = builder.Build();

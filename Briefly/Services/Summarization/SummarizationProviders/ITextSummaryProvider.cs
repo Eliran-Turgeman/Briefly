@@ -1,4 +1,4 @@
-﻿namespace Briefly.Services.Summarization;
+﻿namespace Briefly.Services.Summarization.SummarizationProviders;
 
 public interface ITextSummaryProvider
 {

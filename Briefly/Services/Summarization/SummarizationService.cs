@@ -1,5 +1,6 @@
 ﻿using Briefly.Data;
 using Briefly.Services.Summarization.ContentFetchers;
+using Briefly.Services.Summarization.SummarizationProviders;
 
 namespace Briefly.Services.Summarization;
 

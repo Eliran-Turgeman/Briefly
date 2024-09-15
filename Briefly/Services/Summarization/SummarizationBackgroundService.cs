@@ -1,4 +1,5 @@
 ﻿using Briefly.Data;
+using Briefly.Services.Summarization.SummarizationProviders;
 using Microsoft.EntityFrameworkCore;
 using SmartReader;
 

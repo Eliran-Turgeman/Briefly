@@ -29,7 +29,7 @@ else
                 </div>
                 <div class="mb-3">
                     <label for="summary" class="form-label">Summary:</label>
-                    <InputText id="summary" @bind-Value="BlogPost.Summary" class="form-control" />
+                    <InputTextArea id="summary" @bind-Value="BlogPost.Summary" class="form-control" />
                     <ValidationMessage For="() => BlogPost.Summary" class="text-danger" />
                 </div>
                 <div class="mb-3">

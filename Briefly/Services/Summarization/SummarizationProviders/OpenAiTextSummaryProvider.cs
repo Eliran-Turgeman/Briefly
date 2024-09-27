@@ -1,5 +1,8 @@
-﻿using OpenAI_API;
+﻿using Microsoft.AspNetCore.Http.HttpResults;
+using OpenAI_API;
 using OpenAI_API.Chat;
+using System.Net;
+using System.Text.RegularExpressions;
 
 namespace Briefly.Services.Summarization.SummarizationProviders;
 
@@ -24,13 +27,11 @@ public class OpenAiTextSummaryProvider : ITextSummaryProvider
             throw new ArgumentException("Content to summarize must be provided.", nameof(content));
 
         var prompt = $"""
-        You  will help me generate a summary for a blog post.
+        Summarize the following blog post in 2-5 sentences using simple, direct language.
+        Focus on the main idea of the post, and include an important quote from the content if relevant.
+        Keep it raw and avoid fancy words or unnecessary details.
+
         The summary should adhere to the following requirements:
-        - summary should contain 2-3 sentences only.
-        - summary should be in a simple, consice language.
-        - tell a story about the content, make it human by saying that you just read something interesting.
-        - mention why you think this is a valuable read.
-        - summary can include some "wrapping" around the summary itself like "Interesting read, this post is about... " or "Just read about ... I think you will enjoy it" something like that - make it human.
         - Be precise, don't mislead and don't be clickbaity.
         - Don't say words that will give the impression you are an LLM - like "delve" for example.
 
@@ -39,7 +40,6 @@ public class OpenAiTextSummaryProvider : ITextSummaryProvider
         Please summarize the following blog post:\n {content}
         """;
 
-        // Create a chat completion request
         var chatRequest = new ChatRequest()
         {
             Model = OpenAI_API.Models.Model.ChatGPTTurbo,
@@ -52,10 +52,57 @@ public class OpenAiTextSummaryProvider : ITextSummaryProvider
             }
         };
 
-        var chatResult = await _openAiApi.Chat.CreateChatCompletionAsync(chatRequest);
+        try
+        {
+            var chatResult = await _openAiApi.Chat.CreateChatCompletionAsync(chatRequest);
+            var summary = chatResult.Choices[0].Message.TextContent.Trim();
 
-        var summary = chatResult.Choices[0].Message.TextContent.Trim();
+            return summary;
+        }
+        catch (Exception ex) when (ex.Message.Contains("context_length_exceeded"))
+        {
+            _logger.LogError(ex, "Error generating summary for content.");
+            var overflowRate = ExtractTokenOverflowRate(ex.Message);
+            chatRequest.Messages[1].TextContent = TrimPromptByRate(prompt, overflowRate);
+            var chatResult = await _openAiApi.Chat.CreateChatCompletionAsync(chatRequest);
+            _logger.LogInformation("Summary generated successfully after trimming prompt.");
+            var summary = chatResult.Choices[0].Message.TextContent.Trim();
 
-        return summary;
+            return summary;
+        }
+    }
+
+    /// <summary>
+    /// Extract the rate between the token limit and the actual token count that caused the overflow.
+    /// The result will be rounded up to the nearest integer.
+    /// </summary>
+    /// <param name="errorMessage"></param>
+    /// <returns></returns>
+    private int ExtractTokenOverflowRate(string errorMessage)
+    {
+        var maxTokensMatch = Regex.Match(errorMessage, @"This model's maximum context length is (\d+) tokens");
+        var actualTokensMatch = Regex.Match(errorMessage, @"your messages resulted in (\d+) tokens");
+
+        if (!maxTokensMatch.Success || !actualTokensMatch.Success)
+        {
+            return 0;
+        }
+
+        var maxTokens = double.Parse(maxTokensMatch.Groups[1].Value);
+        var actualTokens = double.Parse(actualTokensMatch.Groups[1].Value);
+
+        return (int)Math.Ceiling(actualTokens / maxTokens);
+    }
+
+    /// <summary>
+    /// Trim the prompt by the rate between the token limit and the actual token count that caused the overflow.
+    /// </summary>
+    /// <param name="prompt"></param>
+    /// <param name="rate"></param>
+    /// <returns></returns>
+    private string TrimPromptByRate(string prompt, int rate)
+    {
+        var newPromptLength = (int)Math.Ceiling(prompt.Length / (double)rate);
+        return prompt.Substring(0, newPromptLength);
     }
 }

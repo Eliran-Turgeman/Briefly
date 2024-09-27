@@ -16,6 +16,16 @@
     <a href="/blogposts/requiredAttention">Posts requiring attention</a>
 </p>
 
+<div>
+    <label>Select View:</label>
+    <select @bind="selectedView">
+        <option value="All">All blog posts</option>
+        <option value="RequireAttention">Posts requiring attention</option>
+        <option value="WaitingForPublish">Posts waiting to be published</option>
+        <!-- Add more options as needed -->
+    </select>
+</div>
+
 <QuickGrid Class="table" Items="FilteredBlogPost" Pagination="paginationState">
     <PropertyColumn Property="blogpost => blogpost.Url" />
     <PropertyColumn Property="blogpost => TruncateSummary(blogpost.Summary!)" Title="Summary">
@@ -41,14 +51,47 @@
     private BrieflyContext context = default!;
     PaginationState paginationState = new() { ItemsPerPage = 5 };
     string summaryFilter = string.Empty;
-    IQueryable<BlogPost> FilteredBlogPost => context.BlogPost.Where(blogpost => blogpost.Summary!.Contains(summaryFilter));
+    string selectedView = "All";
+    IQueryable<BlogPost> FilteredBlogPost => GetFilteredBlogPosts();
 
     protected override void OnInitialized()
     {
         context = DbFactory.CreateDbContext();
     }
 
+    private IQueryable<BlogPost> GetFilteredBlogPosts()
+    {
+        var query = context.BlogPost.AsQueryable();
+
+        // Apply summary filter
+        if (!string.IsNullOrEmpty(summaryFilter))
+        {
+            query = query.Where(blogpost => blogpost.Summary!.Contains(summaryFilter));
+        }
+
+        if (selectedView == "All")
+        {
+            // Show default view - all blog posts
+        }
+        else if (selectedView == "RequireAttention")
+        {
+            query = query.Where(blogpost => !blogpost.IsApprovedSummary && !blogpost.IsPublished);
+        }
+        else if (selectedView == "WaitingForPublish")
+        {
+            query = query.Where(blogpost => blogpost.IsApprovedSummary && !blogpost.IsPublished);
+        }
+
+        return query;
+    }
+
     public async ValueTask DisposeAsync() => await context.DisposeAsync();
+
+    private void OnViewChanged(ChangeEventArgs e)
+    {
+        selectedView = e.Value?.ToString() ?? string.Empty;
+        StateHasChanged();
+    }
 
     private string TruncateSummary(string summary)
     {

@@ -72,6 +72,9 @@ public class PublishingBackgroundService : BackgroundService
                 else
                 {
                     _logger.LogInformation("No approved and unpublished blog posts found.");
+                    
+                    // Wait before checking again if something is ready to be published
+                    await Task.Delay(TimeSpan.FromMinutes(5), stoppingToken);
                 }
             }
             catch (Exception ex)

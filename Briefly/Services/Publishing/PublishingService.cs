@@ -1,7 +1,5 @@
 ﻿using Briefly.Data;
 using Briefly.Services.Publishing.Publishers;
-using Microsoft.EntityFrameworkCore;
-using static System.Formats.Asn1.AsnWriter;
 
 namespace Briefly.Services.Publishing;
 
@@ -28,6 +26,7 @@ public class PublishingService : IPublishingService
 
         // Mark the blog post as published
         blogToPublish.IsPublished = true;
+        blogToPublish.PublishedAt = DateTime.Now;
         dbContext.BlogPost.Update(blogToPublish);
 
         // Record the published message

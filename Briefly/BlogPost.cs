@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using Microsoft.AspNetCore.Mvc.ModelBinding;
+using System.ComponentModel.DataAnnotations;
 
 namespace Briefly;
 
@@ -14,4 +15,8 @@ public class BlogPost
     public bool IsApprovedSummary { get; set; }
 
     public bool IsPublished { get; set; }
+
+    public DateTime? PublishedAt { get; set; }
+
+    public DateTime CreatedAt { get; set; } = DateTime.Now;
 }

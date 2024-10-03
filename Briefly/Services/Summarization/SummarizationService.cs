@@ -38,7 +38,7 @@ public class SummarizationService : ISummarizationService
         }
         catch (Exception ex)
         {
-            _logger.LogCritical($"Error summarizing blog post {postToSummarize.Id}: {ex.Message}");
+            _logger.LogCritical($"Error summarizing blog post {postToSummarize.Id}: {ex.ToString()}");
         }
     }
 

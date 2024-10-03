@@ -1,6 +1,5 @@
 ﻿using Briefly.Components;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using Briefly.Data;
 using Briefly.Services.Summarization;
 using Briefly.Services.Publishing;
@@ -10,10 +9,12 @@ using Briefly.Services.Summarization.ContentFetchers.Strategies;
 using Briefly.Services.Summarization.ContentFetchers;
 using Briefly.Services.Summarization.SummarizationProviders;
 using Briefly.Services.Publishing.Publishers;
+using Briefly.Services.Summarization.Prompts;
+
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContextFactory<BrieflyContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("BrieflyContext") ?? throw new InvalidOperationException("Connection string 'BrieflyContext' not found.")));
+    options.UseSqlite(builder.Configuration.GetConnectionString("BrieflyContext") ?? throw new InvalidOperationException("Connection string 'BrieflyContext' not found.")));
 
 builder.Services.AddQuickGridEntityFrameworkAdapter();
 builder.Services.AddControllers();
@@ -32,14 +33,16 @@ builder.Services.AddSingleton<IContentFetchStrategy, HttpFetchStrategy>();
 builder.Services.AddSingleton<IContentFetcher, ContentFetcher>();
 builder.Services.AddSingleton<ISummarizationService, SummarizationService>();
 builder.Services.AddSingleton<IPublishingService, PublishingService>();
+builder.Services.AddSingleton<IPromptProvider, PromptProvider>();
 
 builder.Services.AddSingleton<ITextSummaryProvider>(provider =>
 {
     var configuration = provider.GetRequiredService<IConfiguration>();
     var apiKey = configuration["OpenAI:ApiKey"];
     var logger = provider.GetRequiredService<ILogger<OpenAiTextSummaryProvider>>();
+    var promptProvider = provider.GetRequiredService<IPromptProvider>();
 
-    return new OpenAiTextSummaryProvider(apiKey!, logger);
+    return new OpenAiTextSummaryProvider(apiKey!, logger, promptProvider);
 });
 
 builder.Services.AddSingleton<IPublisher>(provider =>

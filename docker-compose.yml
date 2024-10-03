@@ -1,0 +1,82 @@
+version: '3.8'
+
+services:
+  # Blazor .NET App
+  app:
+    build:
+        context: .  # Context is the solution folder
+        dockerfile: Briefly/Dockerfile
+
+    stdin_open: true # docker run -i
+    tty: true        # docker run -t
+
+    environment:
+      - OpenAI:ApiKey=${OPENAI_API_KEY}
+      - Telegram:ApiId=${TELEGRAM_API_ID}
+      - Telegram:ApiHash=${TELEGRAM_API_HASH}
+      - Telegram:PhoneNumber=${TELEGRAM_PHONE_NUMBER}
+      - Telegram:ChannelId=${TELEGRAM_CHANNEL_ID}
+      - ASPNETCORE_ENVIRONMENT=Production
+      - SUMMARIZER_PROMPT_TYPE=${SUMMARIZER_PROMPT_TYPE}
+
+    ports:
+      - "8080:8080"  # Exposing the Blazor app
+    volumes:
+      - ./data:/app/data  # Volume to store SQLite database
+    depends_on:
+      - prometheus  # Ensure Prometheus starts before the Blazor app
+    networks:
+      - app-network
+
+  # Prometheus for monitoring
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml  # File mount
+      - ./data/prometheus:/prometheus  # Volume for Prometheus data
+    ports:
+      - "9090:9090"  # Prometheus default port
+    networks:
+      - app-network
+
+  # Grafana for visualizing Prometheus data
+  grafana:
+    image: grafana/grafana:latest
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin  # Set admin password for Grafana
+    volumes:
+      - ./grafana:/var/lib/grafana  # Volume for Grafana data
+    ports:
+      - "3000:3000"  # Expose Grafana on port 3000
+    depends_on:
+      - prometheus  # Grafana depends on Prometheus
+    networks:
+      - app-network
+
+  dbeaver:
+    image: dbeaver/cloudbeaver:latest
+    ports:
+      - "8082:8978"  # Port for web access
+    environment:
+      - CB_DB_SQLITE=true  # Enable SQLite support
+    volumes:
+      - ./data:/app/data
+      - ./dbeaver-data:/opt/cloudbeaver/workspace
+
+volumes:
+  data: 
+    driver: local
+    driver_opts:
+      o: bind
+      type: none
+      device: ./data  # SQLite and Prometheus data will be stored here
+  grafana: 
+    driver: local
+    driver_opts:
+      o: bind
+      type: none
+      device: ./grafana  # Grafana dashboards and settings will be stored here
+
+networks:
+  app-network:
+    driver: bridge

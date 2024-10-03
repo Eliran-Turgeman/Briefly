@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
-using Briefly;
+﻿using Microsoft.EntityFrameworkCore;
 
 namespace Briefly.Data;
 
@@ -14,6 +9,13 @@ public class BrieflyContext : DbContext
     {
     }
 
-    public DbSet<Briefly.BlogPost> BlogPost { get; set; } = default!;
+    public DbSet<BlogPost> BlogPost { get; set; } = default!;
     public DbSet<PublishedMessage> PublishedMessages { get; set; } = default!;
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<BlogPost>()
+            .Property(b => b.CreatedAt)
+            .HasDefaultValueSql("CURRENT_TIMESTAMP");
+    }
 }

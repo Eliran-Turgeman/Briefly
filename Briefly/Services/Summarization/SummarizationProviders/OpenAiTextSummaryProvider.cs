@@ -1,7 +1,6 @@
-﻿using Microsoft.AspNetCore.Http.HttpResults;
+﻿using Briefly.Services.Summarization.Prompts;
 using OpenAI_API;
 using OpenAI_API.Chat;
-using System.Net;
 using System.Text.RegularExpressions;
 
 namespace Briefly.Services.Summarization.SummarizationProviders;
@@ -10,14 +9,17 @@ public class OpenAiTextSummaryProvider : ITextSummaryProvider
 {
     private readonly OpenAIAPI _openAiApi;
     private readonly ILogger<OpenAiTextSummaryProvider> _logger;
+    private readonly IPromptProvider _promptProvider;
 
-    public OpenAiTextSummaryProvider(string apiKey, ILogger<OpenAiTextSummaryProvider> logger)
+    public OpenAiTextSummaryProvider(string apiKey,
+        ILogger<OpenAiTextSummaryProvider> logger, IPromptProvider promptProvider)
     {
         if (string.IsNullOrWhiteSpace(apiKey))
             throw new ArgumentNullException(nameof(apiKey), "OpenAI API key must be provided.");
 
         _openAiApi = new OpenAIAPI(apiKey);
-        _logger = logger;
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _promptProvider = promptProvider ?? throw new ArgumentNullException(nameof(promptProvider));
     }
 
     public async Task<string> GenerateSummaryAsync(string content)
@@ -26,30 +28,18 @@ public class OpenAiTextSummaryProvider : ITextSummaryProvider
         if (string.IsNullOrWhiteSpace(content))
             throw new ArgumentException("Content to summarize must be provided.", nameof(content));
 
-        var prompt = $"""
-        Summarize the following blog post in 2-5 sentences using simple, direct language.
-        Focus on the main idea of the post, and include an important quote from the content if relevant.
-        Keep it raw and avoid fancy words or unnecessary details.
-
-        The summary should adhere to the following requirements:
-        - Be precise, don't mislead and don't be clickbaity.
-        - Don't say words that will give the impression you are an LLM - like "delve" for example.
-
-        Your output should be the summary itself ONLY
-
-        Please summarize the following blog post:\n {content}
-        """;
+        var prompt = $"{_promptProvider.GetPrompt()}\n{content}";
 
         var chatRequest = new ChatRequest()
         {
             Model = OpenAI_API.Models.Model.ChatGPTTurbo,
             Temperature = 0.7,
             MaxTokens = 150,
-            Messages = new ChatMessage[]
-            {
+            Messages =
+            [
                 new ChatMessage(ChatMessageRole.System, "You are an assistant that provides concise summaries."),
                 new ChatMessage(ChatMessageRole.User, prompt)
-            }
+            ]
         };
 
         try

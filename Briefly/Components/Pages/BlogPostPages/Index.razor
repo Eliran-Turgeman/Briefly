@@ -35,6 +35,8 @@
     </PropertyColumn>
     <PropertyColumn Property="blogpost => blogpost.IsApprovedSummary" Sortable="true"  /> 
     <PropertyColumn Property="blogpost => blogpost.IsPublished" Sortable="true" />
+    <PropertyColumn Property="blogpost => blogpost.CreatedAt" Sortable="true" />
+    <PropertyColumn Property="blogpost => blogpost.PublishedAt" Sortable="true" />
 
     <TemplateColumn Context="blogpost">
         <a href="@($"blogposts/edit?id={blogpost.Id}")">Edit</a> |

@@ -50,4 +50,24 @@ public class PromptProvider : IPromptProvider
         }
     }
 
+    /// <summary>
+    /// Writes the selected prompt type to the file located at /app/data/summarizer_prompt_type.txt.
+    /// If the file cannot be written, logs an error.
+    /// </summary>
+    /// <param name="promptType">The prompt type to set.</param>
+    public void setPromptType(string promptType)
+    {
+        var filePath = "/app/data/summarizer_prompt_type.txt";
+
+        try
+        {
+            File.WriteAllText(filePath, promptType.Trim());
+            _logger.LogInformation($"Prompt type set to: {promptType}");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error writing prompt type file: {ex.Message}");
+        }
+    }
+
 }

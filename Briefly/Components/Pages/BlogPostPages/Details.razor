@@ -3,11 +3,12 @@
 @using Briefly
 @using Briefly.Services.Summarization
 @using Briefly.Services.Publishing
+@using Briefly.Services.Summarization.Prompts
 @inject IDbContextFactory<Briefly.Data.BrieflyContext> DbFactory
 @inject NavigationManager NavigationManager
 @inject ISummarizationService SummarizationService
 @inject IPublishingService PublishingService
-
+@inject IPromptProvider PromptProvider
 @rendermode InteractiveServer
 
 <PageTitle>Details</PageTitle>
@@ -36,6 +37,13 @@
         <div>
             <a href="@($"/blogposts/edit?id={blogpost.Id}")">Edit</a> |
             <a href="@($"/blogposts")">Back to List</a> |
+
+            <label for="promptSelection">Select Prompt: </label>
+            <select id="promptSelection" @onchange="OnPromptTypeChanged">
+                <option value="SummarizeContent">Summarize Content</option>
+                <option value="QuoteFromContent">Quote from Content</option>
+            </select>
+
             <button @onclick="SummarizePost" disabled="@summarizingInProgress">
                 @if (summarizingInProgress)
                 {
@@ -130,4 +138,14 @@
             StateHasChanged();
         }
     }
+
+    private void OnPromptTypeChanged(ChangeEventArgs e)
+    {
+        var selectedPromptType = e.Value?.ToString();
+        if (!string.IsNullOrEmpty(selectedPromptType))
+        {
+            PromptProvider.setPromptType(selectedPromptType);
+        }
+    }
+
 }

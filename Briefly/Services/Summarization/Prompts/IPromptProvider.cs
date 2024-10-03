@@ -3,4 +3,6 @@
 public interface IPromptProvider
 {
     string GetPrompt();
+
+    void setPromptType(string promptType);
 }
